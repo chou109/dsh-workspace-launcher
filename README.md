@@ -2,6 +2,8 @@
 
 Open your DeepSeek Harness (dsh) workspace folder in the system file manager, VS Code, or a terminal — and copy its path — straight from the workspace row menu in the sidebar.
 
+> **国内镜像 / Mirror**: also hosted on [gitee.com/chill109/dsh-workspace-launcher](https://gitee.com/chill109/dsh-workspace-launcher) — Gitee is a mainland-China Git host (faster access from mainland China; use it if GitHub is slow).
+
 | | |
 |---|---|
 | **Platform** | Windows-first (`explorer.exe`); macOS / Linux best-effort |
@@ -79,7 +81,7 @@ As shown above: hover a workspace in the sidebar, click the **"..."** at the end
 
 Copy/paste this whole paragraph into your AI assistant (any coding agent that can run shell commands):
 
-> Deploy the dsh-workspace-launcher plugin from `https://github.com/chou109/dsh-workspace-launcher` to my local DeepSeek Harness web profile.
+> Deploy the dsh-workspace-launcher plugin from `https://github.com/chou109/dsh-workspace-launcher` (mainland-China mirror: `https://gitee.com/chill109/dsh-workspace-launcher`) to my local DeepSeek Harness web profile.
 > 1) Run `.\install.ps1` (Windows) — or follow `install.sh` on macOS/Linux — from the repo root. It copies the plugin package into `%USERPROFILE%\.dsh\profiles\node_modules`, patches `@deepseek-ai/dsh-client-ui-workspace`'s client bundle (adding the workspace row menu entries), and registers the plugin in `profiles\web\cordis.patch.yml`.
 > 2) If you cannot run the scripts, follow the README "For AI" deployment section exactly (copy files, apply `patch/dsh-client-ui-workspace.patch` with `git -c core.autocrlf=false apply`, append the cordis insert, restart the harness).
 > 3) After the harness is back, verify: `Invoke-RestMethod -Uri http://127.0.0.1:3080/workspace-open/open -Method Post -ContentType 'application/json' -Body '{"path":"D:\\","app":"explorer"}'` returns `{"ok":true}` and a File Explorer window opens. Then tell me to hard-refresh the browser.

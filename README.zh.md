@@ -2,6 +2,8 @@
 
 在 DeepSeek Harness（dsh）的侧边栏工作区行菜单里，一键用**文件资源管理器 / VS Code / 终端**打开工作区文件夹，或者**复制它的绝对/相对路径**，不用再满硬盘找文件夹在哪。
 
+> **国内镜像**：同时托管于 [gitee.com/chill109/dsh-workspace-launcher](https://gitee.com/chill109/dsh-workspace-launcher) —— 码云（Gitee）是中国大陆的 Git 仓库，国内访问更快。
+
 | | |
 |---|---|
 | **平台** | Windows 优先（`explorer.exe`）；macOS / Linux 尽力支持 |
@@ -79,7 +81,7 @@
 
 把下面这段话原样发给你的 AI 助手（任何能执行命令的编程代理）：
 
-> 请把 `https://github.com/chou109/dsh-workspace-launcher` 里的 dsh-workspace-launcher 插件部署到我的本地 DeepSeek Harness Web profile。
+> 请把 `https://github.com/chou109/dsh-workspace-launcher`（国内镜像：`https://gitee.com/chill109/dsh-workspace-launcher`）里的 dsh-workspace-launcher 插件部署到我的本地 DeepSeek Harness Web profile。
 > 1) Windows 下在仓库根目录运行 `.\install.ps1`（macOS/Linux 按 `install.sh`）。它会：把插件包复制到 `%USERPROFILE%\.dsh\profiles\node_modules`；给 `@deepseek-ai/dsh-client-ui-workspace` 的客户端 bundle 打补丁（在工作区行菜单加入打开/复制功能）；在 `profiles\web\cordis.patch.yml` 注册插件。
 > 2) 如果脚本不可用，就严格按 README「如果你是 AI 请看」的部署步骤来：复制文件、用 `git -c core.autocrlf=false apply` 应用 `patch/dsh-client-ui-workspace.patch`、追加 cordis 条目、重启 harness。
 > 3) harness 起来后验证：`Invoke-RestMethod -Uri http://127.0.0.1:3080/workspace-open/open -Method Post -ContentType 'application/json' -Body '{"path":"D:\\","app":"explorer"}'` 应返回 `{"ok":true}` 并弹出资源管理器窗口。然后让我强制刷新浏览器。
