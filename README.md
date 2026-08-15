@@ -28,13 +28,11 @@ After installing, hover any workspace in the **sidebar → Workspaces** list, cl
 
 No more hunting through the filesystem to find where your workspace lives — one click opens it.
 
-## Screenshots
+## Screenshot
 
-_Drop your screenshots into the [`screenshots/`](screenshots) folder and reference them here._
+![Workspace "..." menu (English UI)](screenshots/screenshot_en.png)
 
-![Workspace row menu](screenshots/menu.png)
-
-![Workspace opened in File Explorer](screenshots/explorer.png)
+As shown above: hover a workspace in the sidebar, click the **"..."** at the end of the row, and this plugin adds five actions — **Open in File Explorer** (the default), **Open in VS Code**, **Open in terminal**, **Copy absolute path**, **Copy relative path**. Every action shows a result toast in the bottom-right corner (success/failure), so nothing fails silently.
 
 ## Requirements
 
