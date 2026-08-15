@@ -1,0 +1,4 @@
+# Patch files must stay LF: they are applied to LF-only bundles with
+# `git -c core.autocrlf=false apply`.
+*.patch -text
+*.sh text eol=lf

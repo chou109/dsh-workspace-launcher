@@ -1,0 +1,120 @@
+diff --git a/client.js b/client.js
+index 53be4bb..873f802 100644
+--- a/client.js
++++ b/client.js
+@@ -438,6 +438,17 @@ window.__ModuleLoader__.load({
+ 			const rect = e.currentTarget.getBoundingClientRect();
+ 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+ 		}
++		/** Transient viewport toast for clipboard/open feedback (best-effort). */
++		function showNotice(text, isError) {
++			try {
++				const el = document.createElement("div");
++				el.textContent = text;
++				el.setAttribute("role", isError ? "alert" : "status");
++				el.style.cssText = "position:fixed;z-index:10000;right:16px;bottom:16px;max-width:70vw;padding:8px 12px;border-radius:10px;font-size:13px;line-height:18px;box-shadow:0 4px 16px rgba(0,0,0,.18);background:" + (isError ? "#c42b1c" : "#1f2328") + ";color:#fff";
++				document.body.appendChild(el);
++				setTimeout(() => el.remove(), 2500);
++			} catch (_error) { /* notification is best-effort */ }
++		}
+ 		/**
+ 		* Project (workspace) header row: folder + title;
+ 		* hover reveals the chevron and create button, and dwelling on a real
+@@ -465,6 +476,33 @@ window.__ModuleLoader__.load({
+ 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
+ 				danger: true
+ 			}];
++			/* dsh-workspace-open: reveal the workspace folder in an external tool. */
++			if (typeof row.cwd === "string" && row.cwd !== "") {
++				workspaceMenuItems.push({
++					id: "open-explorer",
++					label: t("open.explorer"),
++					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutline16, {})
++				}, {
++					id: "open-vscode",
++					label: t("open.vscode"),
++					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutline16, {})
++				}, {
++					id: "open-terminal",
++					label: t("open.terminal"),
++					icon: (0, react_jsx_runtime.jsx)("span", {
++						style: { width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600 },
++						children: ">_"
++					})
++				}, {
++					id: "copy-absolute",
++					label: t("copy.absolute"),
++					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLinkOutline16, {})
++				}, {
++					id: "copy-relative",
++					label: t("copy.relative"),
++					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutline16, {})
++				});
++			}
+ 			const ownRow = (0, react_jsx_runtime.jsxs)("div", {
+ 				className: clsx(Rows_module_css_default.projectRow, menuOpen && Rows_module_css_default.menuOpen),
+ 				role: "treeitem",
+@@ -503,10 +541,28 @@ window.__ModuleLoader__.load({
+ 							items: workspaceMenuItems,
+ 							onSelect: (id) => {
+ 								setMenuOpen(false);
+-								/* v8 ignore next -- workspaceMenuItems carries exactly these two rows today. */
+-								if (id !== "rename" && id !== "delete") return;
+ 								if (id === "rename") actions.rename();
+-								else actions.delete();
++								else if (id === "delete") actions.delete();
++								else if (id === "open-explorer" || id === "open-vscode" || id === "open-terminal") {
++									const cwd = row.cwd;
++									if (typeof cwd !== "string" || cwd === "") return;
++									fetch("/workspace-open/open", {
++										method: "POST",
++										headers: { "content-type": "application/json" },
++										body: JSON.stringify({ path: cwd, app: id.slice(5) })
++									}).then((response) => response.json()).then((payload) => {
++										if (!payload.ok) throw new Error(payload.error || "open failed"); showNotice(t("toast.opened", { app: id === "open-explorer" ? t("open.explorer") : id === "open-vscode" ? t("open.vscode") : t("open.terminal") }), false);
++									}).catch((error) => {
++										showNotice(t("toast.openFailed", { message: String(error && error.message || error) }), true);
++									});
++								} else if (id === "copy-absolute" || id === "copy-relative") {
++									const cwd = row.cwd;
++									if (typeof cwd !== "string" || cwd === "") return;
++									const value = id === "copy-absolute" ? cwd : (cwd.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || cwd);
++									_deepseek_ai_dsh_client_ui_primitives.writeClipboard(value).then((ok) => {
++										showNotice(ok ? t("toast.copied", { text: value }) : t("toast.copyFailed"), !ok);
++									});
++								}
+ 							},
+ 							portal: true,
+ 							closeOnPointerLeave: true,
+@@ -2221,6 +2277,15 @@ window.__ModuleLoader__.load({
+ 			"delete.pending": "正在删除工作区…",
+ 			"menu.fork": "分叉会话",
+ 			"menu.archiveSession": "归档会话",
++			"open.explorer": "在资源管理器中打开",
++			"open.vscode": "在 VS Code 中打开",
++			"open.terminal": "在终端中打开",
++			"copy.absolute": "复制绝对路径",
++			"copy.relative": "复制相对路径",
++			"toast.copied": "已复制：{text}",
++			"toast.copyFailed": "复制失败",
++			"toast.openFailed": "打开失败：{message}",
++"toast.opened": "已打开：{app}",
+ 			"sessions.count.one": "{n} 个会话",
+ 			"sessions.count.other": "{n} 个会话",
+ 			"actions.workspace.aria": "工作区“{name}”的操作",
+@@ -2286,6 +2351,15 @@ window.__ModuleLoader__.load({
+ 			"delete.pending": "Deleting workspace…",
+ 			"menu.fork": "Fork session",
+ 			"menu.archiveSession": "Archive session",
++			"open.explorer": "Open in File Explorer",
++			"open.vscode": "Open in VS Code",
++			"open.terminal": "Open in terminal",
++			"copy.absolute": "Copy absolute path",
++			"copy.relative": "Copy relative path",
++			"toast.copied": "Copied: {text}",
++			"toast.copyFailed": "Copy failed",
++			"toast.openFailed": "Failed to open: {message}",
++"toast.opened": "Opened: {app}",
+ 			"sessions.count.one": "{n} session",
+ 			"sessions.count.other": "{n} sessions",
+ 			"actions.workspace.aria": "Workspace actions for {name}",
