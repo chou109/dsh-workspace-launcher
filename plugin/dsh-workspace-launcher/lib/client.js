@@ -59,7 +59,8 @@ window.__ModuleLoader__.load({
 			".dsh-wl-item:disabled{opacity:.45;cursor:default}",
 			".dsh-wl-status{padding:4px 8px 2px;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);max-width:220px;white-space:normal}",
 			".dsh-wl-status[data-error]{color:var(--dsw-alias-state-error-primary)}",
-			".dsh-wl-icon{flex:none;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary)}"
+			".dsh-wl-icon{flex:none;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-tertiary)}",
+			".dsh-wl-sep{margin:4px 6px;border-top:1px solid var(--dsw-alias-border-l2)}"
 		].join("");
 		var cssTagId = "dsh-workspace-launcher/header-action.css";
 
@@ -268,170 +269,129 @@ window.__ModuleLoader__.load({
 		}
 
 		/**
-		 * Workspace-row context menu (right click). 0.2 exposes no workspace-menu
-		 * slot, so this listens on the sidebar tree, resolves the workspace from the
-		 * row's own action label + `useWorkspaces`, and renders the same four
-		 * actions in its own popover.
+		 * Injects the four workspace actions into the shipped workspace "..." menu.
+		 * 0.2 exposes no workspace-menu slot, so this tracks the clicked row (its
+		 * action label carries the title) and appends styled rows when the menu
+		 * portal appears. The built-in Rename/Delete rows are untouched.
 		 */
-		function WorkspaceContextMenu(props) {
+		function WorkspaceMenuInjector(props) {
 			var t = props.t;
 			var workspaces = props.useWorkspaces(function (state) { return state.items; });
-			var menuState = react.useState(null);
-			var menu = menuState[0];
-			var setMenu = menuState[1];
-			var statusState = react.useState(null);
-			var status = statusState[0];
-			var setStatus = statusState[1];
-			var busyState = react.useState(false);
-			var busy = busyState[0];
-			var setBusy = busyState[1];
-			var menuRef = react.useRef(null);
-			var timer = react.useRef(null);
-
-			var flash = function (text, isError) {
-				if (timer.current !== null) clearTimeout(timer.current);
-				setStatus({ text: text, error: isError === true });
-				timer.current = setTimeout(function () {
-					timer.current = null;
-					setStatus(null);
-				}, 2600);
-			};
+			var workspacesRef = react.useRef(workspaces);
+			workspacesRef.current = workspaces;
+			var pendingRef = react.useRef(null);
 
 			react.useEffect(function () {
+				var rememberRow = function (event) {
+					var target = event.target;
+					if (!(target instanceof Element)) return;
+					var button = target.closest('button[aria-label^="工作区"]');
+					if (button === null) return;
+					var match = (button.getAttribute("aria-label") || "").match(/^工作区[“"](.+)[”"]的操作$/);
+					if (match !== null) pendingRef.current = match[1];
+				};
+				var pickMenu = function (node) {
+					var all = [node];
+					if (node.querySelectorAll) all = all.concat(Array.prototype.slice.call(node.querySelectorAll("*")));
+					var best = null;
+					for (var i = 0; i < all.length; i++) {
+						var el = all[i];
+						if (!(el instanceof Element)) continue;
+						if ((el.textContent || "").indexOf("删除工作区") === -1) continue;
+						var rect = el.getBoundingClientRect();
+						if (rect.width === 0 || rect.width > 460 || rect.height > 460) continue;
+						if (el.querySelectorAll('button, [role="menuitem"]').length < 2) continue;
+						var area = rect.width * rect.height;
+						if (best === null || area < best.area) best = { el: el, area: area };
+					}
+					return best === null ? null : best.el;
+				};
+				var closeMenu = function () {
+					document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+				};
+				var injectInto = function (menu) {
+					if (menu === null || menu.dataset.dshWlInjected === "1") return;
+					var title = pendingRef.current;
+					if (title === null) return;
+					var items = workspacesRef.current || [];
+					var found = null;
+					for (var i = 0; i < items.length; i++) {
+						var item = items[i];
+						var base = String(item.path).replace(/[\\/]+$/, "").split(/[\\/]/).pop();
+						if (item.title === title || base === title) { found = item; break; }
+					}
+					if (found === null) return;
+					menu.dataset.dshWlInjected = "1";
+					var run = function (app) {
+						fetch("/workspace-open/open", {
+							method: "POST",
+							headers: { "content-type": "application/json" },
+							body: JSON.stringify({ path: found.path, app: app })
+						}).then(function (response) { return response.json(); }).then(function (payload) {
+							if (!payload || !payload.ok) throw new Error(payload && payload.error || "open failed");
+							closeMenu();
+						}).catch(function (error) {
+							closeMenu();
+							console.error("[dsh-workspace-launcher]", error);
+						});
+					};
+					var copy = function () {
+						var value = found.path;
+						if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+							navigator.clipboard.writeText(value).then(closeMenu).catch(function () { closeMenu(); });
+							return;
+						}
+						try {
+							var area = document.createElement("textarea");
+							area.value = value;
+							area.style.position = "fixed";
+							area.style.opacity = "0";
+							document.body.appendChild(area);
+							area.select();
+							document.execCommand("copy");
+							area.remove();
+						} catch (error) { /* best effort */ }
+						closeMenu();
+					};
+					var rows = [
+						{ label: t("menu.explorer"), run: function () { run("explorer"); } },
+						{ label: t("menu.vscode"), run: function () { run("vscode"); } },
+						{ label: t("menu.terminal"), run: function () { run("terminal"); } },
+						{ label: t("menu.copy"), run: copy }
+					];
+					var sep = document.createElement("div");
+					sep.className = "dsh-wl-sep";
+					menu.appendChild(sep);
+					for (var r = 0; r < rows.length; r++) {
+						var button = document.createElement("button");
+						button.type = "button";
+						button.className = "dsh-wl-item";
+						button.setAttribute("role", "menuitem");
+						button.textContent = rows[r].label;
+						button.addEventListener("click", rows[r].run);
+						menu.appendChild(button);
+					}
+				};
+				var observer = new MutationObserver(function (records) {
+					for (var i = 0; i < records.length; i++) {
+						var added = records[i].addedNodes;
+						for (var j = 0; j < added.length; j++) {
+							var node = added[j];
+							if (!(node instanceof Element)) continue;
+							var menu = pickMenu(node);
+							if (menu !== null) injectInto(menu);
+						}
+					}
+				});
+				document.addEventListener("pointerdown", rememberRow, true);
+				observer.observe(document.body, { childList: true, subtree: true });
 				return function () {
-					if (timer.current !== null) clearTimeout(timer.current);
+					document.removeEventListener("pointerdown", rememberRow, true);
+					observer.disconnect();
 				};
 			}, []);
 
-			react.useEffect(function () {
-				var onContextMenu = function (event) {
-					try {
-						var target = event.target;
-						if (!(target instanceof Element)) return;
-						if (target.closest('[data-slot="sidebar.workspaces"]') === null) return;
-						var path = typeof event.composedPath === "function" ? event.composedPath() : [];
-						var header = null;
-						for (var i = 0; i < path.length; i++) {
-							var node = path[i];
-							if (!(node instanceof HTMLElement)) continue;
-							var button = typeof node.querySelector === "function" ? node.querySelector('button[aria-label^="工作区"]') : null;
-							if (button === null) continue;
-							var label = button.getAttribute("aria-label") || "";
-							if (!/的操作$/.test(label)) continue;
-							if (node.getBoundingClientRect().height > 72) continue;
-							header = { node: node, label: label };
-						}
-						if (header === null) return;
-						var match = header.label.match(/^工作区[“"](.+)[”"]的操作$/);
-						if (match === null) return;
-						var title = match[1];
-						var found = null;
-						for (var j = 0; j < workspaces.length; j++) {
-							var item = workspaces[j];
-							var base = String(item.path).replace(/[\\/]+$/, "").split(/[\\/]/).pop();
-							if (item.title === title || base === title) { found = item; break; }
-						}
-						if (found === null) return;
-						event.preventDefault();
-						event.stopPropagation();
-						setStatus(null);
-						setMenu({ x: event.clientX, y: event.clientY, path: found.path, title: found.title });
-					} catch (error) { /* leave the default menu alone */ }
-				};
-				document.addEventListener("contextmenu", onContextMenu, true);
-				return function () { document.removeEventListener("contextmenu", onContextMenu, true); };
-			}, [workspaces]);
-
-			react.useEffect(function () {
-				if (menu === null) return;
-				var close = function (event) {
-					if (event.type === "keydown" && event.key !== "Escape") return;
-					var root = menuRef.current;
-					if (event.type === "pointerdown" && root !== null && root.contains(event.target)) return;
-					setMenu(null);
-				};
-				document.addEventListener("pointerdown", close, true);
-				document.addEventListener("keydown", close, true);
-				return function () {
-					document.removeEventListener("pointerdown", close, true);
-					document.removeEventListener("keydown", close, true);
-				};
-			}, [menu]);
-
-			if (menu === null) return null;
-
-			var launch = function (app) {
-				setBusy(true);
-				fetch("/workspace-open/open", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ path: menu.path, app: app })
-				}).then(function (response) { return response.json(); }).then(function (payload) {
-					if (!payload || !payload.ok) throw new Error(payload && payload.error || "open failed");
-					setMenu(null);
-					flash(t("status.opened", { app: t("menu." + app) }), false);
-				}).catch(function (error) {
-					flash(t("status.failed", { message: String(error && error.message || error) }), true);
-				}).finally(function () { setBusy(false); });
-			};
-
-			var copyPath = function () {
-				var value = menu.path;
-				var done = function () { setMenu(null); flash(t("status.copied"), false); };
-				if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-					navigator.clipboard.writeText(value).then(done).catch(function () {
-						flash(t("status.failed", { message: "clipboard" }), true);
-					});
-					return;
-				}
-				try {
-					var area = document.createElement("textarea");
-					area.value = value;
-					area.style.position = "fixed";
-					area.style.opacity = "0";
-					document.body.appendChild(area);
-					area.select();
-					document.execCommand("copy");
-					area.remove();
-					done();
-				} catch (error) {
-					flash(t("status.failed", { message: String(error && error.message || error) }), true);
-				}
-			};
-
-			var rows = [
-				{ id: "explorer", label: t("menu.explorer"), icon: IconFolder, run: function () { launch("explorer"); } },
-				{ id: "vscode", label: t("menu.vscode"), icon: IconCode, run: function () { launch("vscode"); } },
-				{ id: "terminal", label: t("menu.terminal"), icon: IconTerminal, run: function () { launch("terminal"); } },
-				{ id: "copy", label: t("menu.copy"), icon: IconCopy, run: copyPath }
-			].map(function (item) {
-				var Icon = item.icon;
-				return h("button", {
-					key: item.id,
-					type: "button",
-					className: "dsh-wl-item",
-					role: "menuitem",
-					disabled: busy ? true : void 0,
-					onClick: item.run
-				}, [h("span", { key: "icon", className: "dsh-wl-icon" }, Icon()), h("span", { key: "label" }, item.label)]);
-			});
-			if (status !== null) {
-				rows.push(h("div", { key: "status", className: "dsh-wl-status", "data-error": status.error ? "" : void 0, role: status.error ? "alert" : "status" }, status.text));
-			}
-
-			var width = 200;
-			var height = 190;
-			var left = Math.min(Math.max(8, menu.x), window.innerWidth - width - 8);
-			var top = Math.min(Math.max(8, menu.y), window.innerHeight - height - 8);
-
-			return h("div", {
-				ref: menuRef,
-				className: "dsh-wl-menu",
-				role: "menu",
-				"data-workspace-context": true,
-				style: { left: left + "px", top: top + "px", minWidth: width + "px" },
-				onContextMenu: function (event) { event.preventDefault(); }
-			}, rows);
+			return null;
 		}
 
 		var inject = ["slots", "sessions", "workspaces", "locale"];
@@ -464,10 +424,10 @@ window.__ModuleLoader__.load({
 			ctx.slots.inject("shell.overlay", function () {
 				return ctx.slots.register({
 					name: "shell.overlay",
-					id: "dsh-workspace-launcher.context",
+					id: "dsh-workspace-launcher.menu",
 					order: 95,
 					locale: NS
-				}, WorkspaceContextMenu);
+				}, WorkspaceMenuInjector);
 			});
 		}
 

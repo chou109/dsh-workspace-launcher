@@ -20,11 +20,11 @@ Open the current session's workspace directory in **File Explorer**, **VS Code**
 | 0.1.x | 2.0.0 |
 |---|---|
 | Patched `dsh-client-ui-workspace` bundle | No patches at all |
-| Rows in the Workspace “...” menu | Session-header menu + a **right-click menu on workspace rows** |
+| Rows in the Workspace “...” menu | **The same menu**, with the four rows appended to the shipped Rename/Delete menu; plus a Session-header menu |
 | Workspace path came from the patched row | `cwd` from `useSessions`, workspace `path` as fallback |
 | Toasts injected into `document.body` | Status line inside the plugin's own popover |
 
-DSH 0.2 has no workspace-menu slot (only session row menus are extendable), so the right-click menu is built by listening for `contextmenu` inside `sidebar.workspaces`, resolving the workspace from the row's own action label plus `useWorkspaces`, and rendering the same four actions in the plugin's popover. The built-in “...” menu is left untouched.
+DSH 0.2 has no workspace-menu slot (only session row menus are extendable). The plugin therefore remembers the workspace whose “...” button was pressed (its `aria-label` carries the title), watches for the shipped menu to appear, and appends the four rows inside that menu. The built-in Rename/Delete rows and their behavior are untouched.
 
 DSH 0.2 also ships a built-in **Open In…** split button (`dsh-client-ui-open-in-app`) that opens the session directory in any installed application from the application catalog. This plugin stays complementary: it guarantees Explorer, VS Code, a terminal, and a clipboard copy even when the catalog probe finds nothing.
 
