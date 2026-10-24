@@ -20,15 +20,17 @@ Open the current session's workspace directory in **File Explorer**, **VS Code**
 | 0.1.x | 2.0.0 |
 |---|---|
 | Patched `dsh-client-ui-workspace` bundle | No patches at all |
-| Rows in the Workspace “...” menu | One “Open workspace” menu in `conversation.session.header.actions` |
+| Rows in the Workspace “...” menu | Session-header menu + a **right-click menu on workspace rows** |
 | Workspace path came from the patched row | `cwd` from `useSessions`, workspace `path` as fallback |
 | Toasts injected into `document.body` | Status line inside the plugin's own popover |
+
+DSH 0.2 has no workspace-menu slot (only session row menus are extendable), so the right-click menu is built by listening for `contextmenu` inside `sidebar.workspaces`, resolving the workspace from the row's own action label plus `useWorkspaces`, and rendering the same four actions in the plugin's popover. The built-in “...” menu is left untouched.
 
 DSH 0.2 also ships a built-in **Open In…** split button (`dsh-client-ui-open-in-app`) that opens the session directory in any installed application from the application catalog. This plugin stays complementary: it guarantees Explorer, VS Code, a terminal, and a clipboard copy even when the catalog probe finds nothing.
 
 ## What it does
 
-The Session header gains an **Open workspace** button. Its menu offers:
+The Session header gains an **Open workspace** button, and a **right-click on a workspace row** in the sidebar opens the same menu:
 
 - **Open in File Explorer** — `explorer.exe` via `cmd /c start`, Finder, or `xdg-open`.
 - **Open in VS Code** — `code`, with Windows registry/`App Paths`/standard-path fallbacks.

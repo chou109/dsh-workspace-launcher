@@ -20,15 +20,17 @@
 | 0.1.x | 2.0.0 |
 |---|---|
 | 补丁 `dsh-client-ui-workspace` bundle | 完全不打补丁 |
-| 工作区“...”菜单里的 5 行 | 会话标题栏的“打开工作区”菜单 |
+| 工作区“...”菜单里的 5 行 | 会话标题栏菜单 + **工作区行右键菜单** |
 | 路径来自被补丁的那一行 | `useSessions` 的 `cwd`，工作区 `path` 兜底 |
 | 往 `document.body` 塞 Toast | 状态文案显示在插件自己的浮层里 |
+
+DSH 0.2 没有工作区菜单槽位（只有会话行菜单可扩展），所以右键菜单通过监听 `sidebar.workspaces` 内的 `contextmenu`、结合行自身的操作标签与 `useWorkspaces` 解析工作区，再用插件自己的浮层渲染同样四项操作。内置的“...”菜单保持原样。
 
 DSH 0.2 自带 **Open In…** 分裂按钮（`dsh-client-ui-open-in-app`），能从应用目录里选任意已安装程序打开会话目录。本插件与之互补：即使应用探测不到任何程序，也保证能打开资源管理器、VS Code、终端，或复制路径。
 
 ## 功能
 
-会话标题栏新增“打开工作区”按钮，菜单包含：
+会话标题栏新增“打开工作区”按钮；在侧边栏**右键点击工作区行**也会弹出同一菜单：
 
 - **在资源管理器中打开** —— Windows 走 `cmd /c start`（ShellExecute），macOS 用 Finder，Linux 用 `xdg-open`。
 - **在 VS Code 中打开** —— 先试 `code`，Windows 再从注册表 `App Paths`、标准安装路径、各盘根目录回退查找。
