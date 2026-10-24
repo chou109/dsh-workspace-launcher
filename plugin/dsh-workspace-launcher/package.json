@@ -1,8 +1,8 @@
 {
   "name": "dsh-workspace-launcher",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Open the current workspace in the system file manager (Explorer), VS Code, or a terminal, from the session header.",
+  "description": "Open the current workspace in the system file manager (Explorer), VS Code, or a terminal from the Session header (DSH 0.2.x).",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -10,13 +10,18 @@
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
-      "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-conversation"
-      ]
+      "immediately": true,
+      "inject": []
     }
   }
 }

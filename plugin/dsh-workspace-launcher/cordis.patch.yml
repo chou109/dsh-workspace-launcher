@@ -1,0 +1,6 @@
+# dsh-workspace-launcher bundle patch (DSH 0.2.x).
+# The client half contributes the Session-header action; this row only has to
+# exist for client discovery to serve `lib/client.js`.
+- insert:
+    - id: workspace-open
+      name: 'dsh-workspace-launcher'
